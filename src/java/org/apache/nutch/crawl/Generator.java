@@ -519,7 +519,11 @@ public class Generator extends NutchTool implements Tool {
           catch (Exception e) {
         	  LOG.info("Exception while doing host/domain extraction", e.toString());
           }
-              
+                    
+        if(maxCount == 0){ 
+        	continue; 
+        }
+        
         // Got a non-zero variable fetch delay? Add it to the datum's metadata
         if (variableFetchDelayWritable != null) {
           entry.datum.getMetaData().put(variableFetchDelayKey, variableFetchDelayWritable);
