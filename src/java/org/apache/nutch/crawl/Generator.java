@@ -376,7 +376,7 @@ public class Generator extends NutchTool implements Tool {
       
       // check expr
       if (expr != null) {
-        if (!crawlDatum.evaluate(expr)) {
+        if (!crawlDatum.evaluate(expr, key.toString())) {
           return;
         }
       }
