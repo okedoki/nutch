@@ -21,15 +21,17 @@ import java.lang.invoke.MethodHandles;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.net.InetAddress;
+import java.util.AbstractMap;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.mapred.JobConf;
 import org.apache.nutch.indexer.IndexWriter;
+import org.apache.nutch.indexer.IndexWriterParams;
 import org.apache.nutch.indexer.NutchDocument;
 import org.apache.nutch.indexer.NutchField;
 import org.elasticsearch.action.bulk.BulkResponse;
@@ -46,8 +48,7 @@ import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.transport.InetSocketTransportAddress;
 import org.elasticsearch.node.Node;
-import org.elasticsearch.transport.client.*;
-
+import org.elasticsearch.transport.client.PreBuiltTransportClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -66,6 +67,15 @@ public class ElasticIndexWriter implements IndexWriter {
   private static final int DEFAULT_BULK_CLOSE_TIMEOUT = 600;
   private static final String DEFAULT_INDEX = "nutch";
 
+  private String cluster;
+  private String[] hosts;
+  private int port;
+
+  private int maxBulkDocs;
+  private int maxBulkLength;
+  private int expBackoffMillis;
+  private int expBackoffRetries;
+
   private String defaultIndex;
   private Client client;
   private Node node;
@@ -76,48 +86,71 @@ public class ElasticIndexWriter implements IndexWriter {
   private Configuration config;
 
   @Override
-  public void open(JobConf job, String name) throws IOException {
-    bulkCloseTimeout = job.getLong(ElasticConstants.BULK_CLOSE_TIMEOUT,
-        DEFAULT_BULK_CLOSE_TIMEOUT);
-    defaultIndex = job.get(ElasticConstants.INDEX, DEFAULT_INDEX);
-
-    int maxBulkDocs = job.getInt(ElasticConstants.MAX_BULK_DOCS,
-        DEFAULT_MAX_BULK_DOCS);
-    int maxBulkLength = job.getInt(ElasticConstants.MAX_BULK_LENGTH,
-        DEFAULT_MAX_BULK_LENGTH);
-    int expBackoffMillis = job.getInt(ElasticConstants.EXPONENTIAL_BACKOFF_MILLIS,
-        DEFAULT_EXP_BACKOFF_MILLIS);
-    int expBackoffRetries = job.getInt(ElasticConstants.EXPONENTIAL_BACKOFF_RETRIES,
-        DEFAULT_EXP_BACKOFF_RETRIES);
-
-    client = makeClient(job);
-
-    LOG.debug("Creating BulkProcessor with maxBulkDocs={}, maxBulkLength={}", maxBulkDocs, maxBulkLength);
-    bulkProcessor = BulkProcessor.builder(client, bulkProcessorListener())
-      .setBulkActions(maxBulkDocs)
-      .setBulkSize(new ByteSizeValue(maxBulkLength, ByteSizeUnit.BYTES))
-      .setConcurrentRequests(1)
-      .setBackoffPolicy(BackoffPolicy.exponentialBackoff(
-          TimeValue.timeValueMillis(expBackoffMillis), expBackoffRetries))
-      .build();
+  public void open(Configuration conf, String name) throws IOException {
+    //Implementation not required
   }
 
-  /** Generates a TransportClient or NodeClient */
-  protected Client makeClient(Configuration conf) throws IOException {
-    String clusterName = conf.get(ElasticConstants.CLUSTER);
-    String[] hosts = conf.getStrings(ElasticConstants.HOSTS);
-    int port = conf.getInt(ElasticConstants.PORT, DEFAULT_PORT);
+  /**
+   * Initializes the internal variables from a given index writer configuration.
+   *
+   * @param parameters Params from the index writer configuration.
+   * @throws IOException Some exception thrown by writer.
+   */
+  @Override
+  public void open(IndexWriterParams parameters) throws IOException {
+    cluster = parameters.get(ElasticConstants.CLUSTER);
+    String hosts = parameters.get(ElasticConstants.HOSTS);
+
+    if (StringUtils.isBlank(cluster) && StringUtils.isBlank(hosts)) {
+      String message = "Missing elastic.cluster and elastic.host. At least one of them should be set in index-writers.xml ";
+      message += "\n" + describe();
+      LOG.error(message);
+      throw new RuntimeException(message);
+    }
+
+    bulkCloseTimeout = parameters.getLong(ElasticConstants.BULK_CLOSE_TIMEOUT,
+        DEFAULT_BULK_CLOSE_TIMEOUT);
+    defaultIndex = parameters.get(ElasticConstants.INDEX, DEFAULT_INDEX);
+
+    maxBulkDocs = parameters
+        .getInt(ElasticConstants.MAX_BULK_DOCS, DEFAULT_MAX_BULK_DOCS);
+    maxBulkLength = parameters
+        .getInt(ElasticConstants.MAX_BULK_LENGTH, DEFAULT_MAX_BULK_LENGTH);
+    expBackoffMillis = parameters
+        .getInt(ElasticConstants.EXPONENTIAL_BACKOFF_MILLIS,
+            DEFAULT_EXP_BACKOFF_MILLIS);
+    expBackoffRetries = parameters
+        .getInt(ElasticConstants.EXPONENTIAL_BACKOFF_RETRIES,
+            DEFAULT_EXP_BACKOFF_RETRIES);
+
+    client = makeClient(parameters);
+
+    LOG.debug("Creating BulkProcessor with maxBulkDocs={}, maxBulkLength={}",
+        maxBulkDocs, maxBulkLength);
+    bulkProcessor = BulkProcessor.builder(client, bulkProcessorListener())
+        .setBulkActions(maxBulkDocs)
+        .setBulkSize(new ByteSizeValue(maxBulkLength, ByteSizeUnit.BYTES))
+        .setConcurrentRequests(1).setBackoffPolicy(BackoffPolicy
+            .exponentialBackoff(TimeValue.timeValueMillis(expBackoffMillis),
+                expBackoffRetries)).build();
+  }
+
+  /**
+   * Generates a TransportClient or NodeClient
+   */
+  protected Client makeClient(IndexWriterParams parameters) throws IOException {
+    hosts = parameters.getStrings(ElasticConstants.HOSTS);
+    port = parameters.getInt(ElasticConstants.PORT, DEFAULT_PORT);
 
     Settings.Builder settingsBuilder = Settings.builder();
 
     BufferedReader reader = new BufferedReader(
-        conf.getConfResourceAsReader("elasticsearch.conf"));
+        config.getConfResourceAsReader("elasticsearch.conf"));
     String line;
-    String parts[];
+    String[] parts;
     while ((line = reader.readLine()) != null) {
       if (StringUtils.isNotBlank(line) && !line.startsWith("#")) {
-        line = line.trim();
-        parts = line.split("=");
+        parts = line.trim().split("=");
 
         if (parts.length == 2) {
           settingsBuilder.put(parts[0].trim(), parts[1].trim());
@@ -126,8 +159,9 @@ public class ElasticIndexWriter implements IndexWriter {
     }
 
     // Set the cluster name and build the settings
-    if (StringUtils.isNotBlank(clusterName))
-      settingsBuilder.put("cluster.name", clusterName);
+    if (StringUtils.isNotBlank(cluster)) {
+      settingsBuilder.put("cluster.name", cluster);
+    }
 
     Settings settings = settingsBuilder.build();
 
@@ -135,12 +169,14 @@ public class ElasticIndexWriter implements IndexWriter {
 
     // Prefer TransportClient
     if (hosts != null && port > 1) {
+      @SuppressWarnings("resource")
       TransportClient transportClient = new PreBuiltTransportClient(settings);
 
-      for (String host: hosts)
-        transportClient.addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName(host), port));
+      for (String host : hosts)
+        transportClient.addTransportAddress(
+            new InetSocketTransportAddress(InetAddress.getByName(host), port));
       client = transportClient;
-    } else if (clusterName != null) {
+    } else if (cluster != null) {
       node = new Node(settings);
       client = node.client();
     }
@@ -148,19 +184,24 @@ public class ElasticIndexWriter implements IndexWriter {
     return client;
   }
 
-  /** Generates a default BulkProcessor.Listener */
+  /**
+   * Generates a default BulkProcessor.Listener
+   */
   protected BulkProcessor.Listener bulkProcessorListener() {
     return new BulkProcessor.Listener() {
       @Override
-      public void beforeBulk(long executionId, BulkRequest request) { }
+      public void beforeBulk(long executionId, BulkRequest request) {
+      }
 
       @Override
-      public void afterBulk(long executionId, BulkRequest request, Throwable failure) {
+      public void afterBulk(long executionId, BulkRequest request,
+          Throwable failure) {
         throw new RuntimeException(failure);
       }
 
       @Override
-      public void afterBulk(long executionId, BulkRequest request, BulkResponse response) {
+      public void afterBulk(long executionId, BulkRequest request,
+          BulkResponse response) {
         if (response.hasFailures()) {
           LOG.warn("Failures occurred during bulk request");
         }
@@ -187,7 +228,8 @@ public class ElasticIndexWriter implements IndexWriter {
       }
     }
 
-    IndexRequest request = new IndexRequest(defaultIndex, type, id).source(source);
+    IndexRequest request = new IndexRequest(defaultIndex, type, id)
+        .source(source);
     bulkProcessor.add(request);
   }
 
@@ -213,7 +255,8 @@ public class ElasticIndexWriter implements IndexWriter {
     try {
       bulkProcessor.awaitClose(bulkCloseTimeout, TimeUnit.SECONDS);
     } catch (InterruptedException e) {
-      LOG.warn("interrupted while waiting for BulkProcessor to complete ({})", e.getMessage());
+      LOG.warn("interrupted while waiting for BulkProcessor to complete ({})",
+          e.getMessage());
     }
 
     client.close();
@@ -222,45 +265,54 @@ public class ElasticIndexWriter implements IndexWriter {
     }
   }
 
+  /**
+   * Returns {@link Map} with the specific parameters the IndexWriter instance can take.
+   *
+   * @return The values of each row. It must have the form <KEY,<DESCRIPTION,VALUE>>.
+   */
   @Override
-  public String describe() {
-    StringBuffer sb = new StringBuffer("ElasticIndexWriter\n");
-    sb.append("\t").append(ElasticConstants.CLUSTER)
-        .append(" : elastic prefix cluster\n");
-    sb.append("\t").append(ElasticConstants.HOSTS).append(" : hostname\n");
-    sb.append("\t").append(ElasticConstants.PORT).append(" : port\n");
-    sb.append("\t").append(ElasticConstants.INDEX)
-        .append(" : elastic index command \n");
-    sb.append("\t").append(ElasticConstants.MAX_BULK_DOCS)
-        .append(" : elastic bulk index doc counts. (default ")
-        .append(DEFAULT_MAX_BULK_DOCS).append(")\n");
-    sb.append("\t").append(ElasticConstants.MAX_BULK_LENGTH)
-        .append(" : elastic bulk index length in bytes. (default ")
-        .append(DEFAULT_MAX_BULK_LENGTH).append(")\n");
-    sb.append("\t").append(ElasticConstants.EXPONENTIAL_BACKOFF_MILLIS)
-        .append(" : elastic bulk exponential backoff initial delay in milliseconds. (default ")
-        .append(DEFAULT_EXP_BACKOFF_MILLIS).append(")\n");
-    sb.append("\t").append(ElasticConstants.EXPONENTIAL_BACKOFF_RETRIES)
-        .append(" : elastic bulk exponential backoff max retries. (default ")
-        .append(DEFAULT_EXP_BACKOFF_RETRIES).append(")\n");
-    sb.append("\t").append(ElasticConstants.BULK_CLOSE_TIMEOUT)
-        .append(" : elastic timeout for the last bulk in seconds. (default ")
-        .append(DEFAULT_BULK_CLOSE_TIMEOUT).append(")\n");
-    return sb.toString();
+  public Map<String, Map.Entry<String, Object>> describe() {
+    Map<String, Map.Entry<String, Object>> properties = new LinkedHashMap<>();
+
+    properties.put(ElasticConstants.CLUSTER, new AbstractMap.SimpleEntry<>(
+        "The cluster name to discover. Either host and port must be defined or cluster.",
+        this.cluster));
+    properties.put(ElasticConstants.HOSTS, new AbstractMap.SimpleEntry<>(
+        "Ordered list of fields (columns) in the CSV fileComma-separated list of "
+            + "hostnames to send documents to using TransportClient. "
+            + "Either host and port must be defined or cluster.",
+        this.hosts == null ? "" : String.join(",", hosts)));
+    properties.put(ElasticConstants.PORT, new AbstractMap.SimpleEntry<>(
+        "The port to connect to using TransportClient.", this.port));
+    properties.put(ElasticConstants.INDEX,
+        new AbstractMap.SimpleEntry<>("Default index to send documents to.",
+            this.defaultIndex));
+    properties.put(ElasticConstants.MAX_BULK_DOCS,
+        new AbstractMap.SimpleEntry<>(
+            "Maximum size of the bulk in number of documents.",
+            this.maxBulkDocs));
+    properties.put(ElasticConstants.MAX_BULK_LENGTH,
+        new AbstractMap.SimpleEntry<>("Maximum size of the bulk in bytes.",
+            this.maxBulkLength));
+    properties.put(ElasticConstants.EXPONENTIAL_BACKOFF_MILLIS,
+        new AbstractMap.SimpleEntry<>(
+            "Initial delay for the BulkProcessor exponential backoff policy.",
+            this.expBackoffMillis));
+    properties.put(ElasticConstants.EXPONENTIAL_BACKOFF_RETRIES,
+        new AbstractMap.SimpleEntry<>(
+            "Number of times the BulkProcessor exponential backoff policy should retry bulk operations.",
+            this.expBackoffRetries));
+    properties.put(ElasticConstants.BULK_CLOSE_TIMEOUT,
+        new AbstractMap.SimpleEntry<>(
+            "Number of seconds allowed for the BulkProcessor to complete its last operation.",
+            this.bulkCloseTimeout));
+
+    return properties;
   }
 
   @Override
   public void setConf(Configuration conf) {
     config = conf;
-    String cluster = conf.get(ElasticConstants.CLUSTER);
-    String hosts = conf.get(ElasticConstants.HOSTS);
-
-    if (StringUtils.isBlank(cluster) && StringUtils.isBlank(hosts)) {
-      String message = "Missing elastic.cluster and elastic.host. At least one of them should be set in nutch-site.xml ";
-      message += "\n" + describe();
-      LOG.error(message);
-      throw new RuntimeException(message);
-    }
   }
 
   @Override

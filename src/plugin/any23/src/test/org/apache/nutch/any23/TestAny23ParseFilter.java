@@ -16,31 +16,18 @@
  */
 package org.apache.nutch.any23;
 
-import java.io.DataInputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.Arrays;
-
-import org.apache.avro.util.Utf8;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.Text;
 import org.apache.nutch.crawl.CrawlDatum;
-import org.apache.nutch.indexer.NutchDocument;
-import org.apache.nutch.metadata.Metadata;
-import org.apache.nutch.parse.Outlink;
 import org.apache.nutch.parse.Parse;
-import org.apache.nutch.parse.ParseData;
 import org.apache.nutch.parse.ParseException;
-import org.apache.nutch.parse.ParseImpl;
-import org.apache.nutch.parse.ParseStatus;
 import org.apache.nutch.parse.ParseUtil;
 import org.apache.nutch.parse.ParserNotFound;
 import org.apache.nutch.protocol.Content;
 import org.apache.nutch.protocol.Protocol;
 import org.apache.nutch.protocol.ProtocolFactory;
-import org.apache.nutch.util.MimeUtil;
 import org.apache.nutch.util.NutchConfiguration;
 import org.junit.Assert;
 import org.junit.Before;
@@ -62,16 +49,19 @@ public class TestAny23ParseFilter {
   
   private String file2 = "microdata_basic.html";
 
-  private static final int EXPECTED_TRIPLES_1 = 79;
+  private static final int EXPECTED_TRIPLES_1 = 68;
   
-  private static final int EXPECTED_TRIPLES_2 = 39;
+  private static final int EXPECTED_TRIPLES_2 = 38;
   
   @Before
   public void setUp() {
     this.conf = NutchConfiguration.create();
     conf.set("file.content.limit", "-1");
     conf.set("parser.timeout", "-1");
-    conf.set(Any23ParseFilter.ANY_23_EXTRACTORS_CONF, "html-embedded-jsonld,html-head-icbm,html-head-links,html-head-meta,html-head-title,html-mf-adr,html-mf-geo,html-mf-hcalendar,html-mf-hcard,html-mf-hlisting,html-mf-hrecipe,html-mf-hresume,html-mf-hreview,html-mf-hreview-aggregate,html-mf-license,html-mf-species,html-mf-xfn,html-microdata,html-rdfa11,html-xpath");
+    conf.set(Any23ParseFilter.ANY_23_EXTRACTORS_CONF, "html-embedded-jsonld,html-head-icbm,html-head-links,"
+            + "html-head-meta,html-head-title,html-mf-adr,html-mf-geo,html-mf-hcalendar,html-mf-hcard,"
+            + "html-mf-hlisting,html-mf-hrecipe,html-mf-hresume,html-mf-hreview,html-mf-hreview-aggregate,"
+            + "html-mf-license,html-mf-species,html-mf-xfn,html-microdata,html-rdfa11,html-xpath");
     conf.set(Any23ParseFilter.ANY_23_CONTENT_TYPES_CONF, "text/html");
   }
 

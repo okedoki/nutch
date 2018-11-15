@@ -20,7 +20,6 @@ package org.apache.nutch.util;
 import java.io.File;
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
-import java.net.URL;
 import java.text.SimpleDateFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -66,8 +65,6 @@ public class ProtocolStatusStatistics extends Configured implements Tool {
 
   private static final Text UNFETCHED_TEXT = new Text("UNFETCHED");
 
-  public static Configuration conf;
-
   public int run(String[] args) throws Exception {
     if (args.length < 2) {
       System.err.println("Usage: ProtocolStatistics inputDirs outDir [numOfReducer]");
@@ -95,7 +92,7 @@ public class ProtocolStatusStatistics extends Configured implements Tool {
 
     String jobName = "ProtocolStatistics";
 
-    conf = getConf();
+    Configuration conf = getConf();
     conf.setBoolean("mapreduce.fileoutputcommitter.marksuccessfuljobs", false);
 
     Job job = Job.getInstance(conf, jobName);

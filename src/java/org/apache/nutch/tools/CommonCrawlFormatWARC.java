@@ -1,3 +1,20 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.apache.nutch.tools;
 
 import java.io.ByteArrayInputStream;
@@ -8,11 +25,9 @@ import java.net.URI;
 import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.ibm.icu.text.SimpleDateFormat;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
@@ -36,7 +51,7 @@ public class CommonCrawlFormatWARC extends AbstractCommonCrawlFormat {
   public static final String TEMPLATE = "${prefix}-${timestamp17}-${serialno}";
 
   private static final AtomicInteger SERIALNO = new AtomicInteger();
-  private final static UUIDGenerator GENERATOR = new UUIDGenerator();
+  private static final UUIDGenerator GENERATOR = new UUIDGenerator();
 
   private String outputDir = null;
   private ByteArrayOutputStream out;
@@ -161,8 +176,6 @@ public class CommonCrawlFormatWARC extends AbstractCommonCrawlFormat {
 
     record.setType(WARCConstants.WARCRecordType.response);
     record.setUrl(getUrl());
-
-    String fetchTime;
 
     record.setCreate14DigitDate(DateUtils
         .getLog14Date(Long.parseLong(metadata.get("nutch.fetch.time"))));

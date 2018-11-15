@@ -19,7 +19,8 @@ package org.apache.nutch.util;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
-import java.io.PrintWriter;
+import java.io.OutputStream;
+import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -27,8 +28,12 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 
 import org.apache.hadoop.conf.Configured;
+import org.apache.hadoop.io.Text;
 import org.apache.hadoop.util.Tool;
-
+import org.apache.nutch.crawl.CrawlDatum;
+import org.apache.nutch.protocol.Protocol;
+import org.apache.nutch.protocol.ProtocolFactory;
+import org.apache.nutch.protocol.ProtocolOutput;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -89,6 +94,7 @@ public abstract class AbstractChecker extends Configured implements Tool {
     String line;
     while ((line = in.readLine()) != null) {
       StringBuilder output = new StringBuilder();
+      @SuppressWarnings("unused")
       int ret = process(line, output);
       System.out.println(output);
     }
@@ -96,6 +102,7 @@ public abstract class AbstractChecker extends Configured implements Tool {
   }
 
   // Open TCP socket and process input
+  @SuppressWarnings("resource")
   protected void processTCP(int tcpPort) throws Exception {
     ServerSocket server = null;
 
@@ -104,7 +111,7 @@ public abstract class AbstractChecker extends Configured implements Tool {
       server.bind(new InetSocketAddress(tcpPort));
       LOG.info(server.toString());
     } catch (Exception e) {
-      LOG.error("Could not listen on port " + tcpPort);
+      LOG.error("Could not listen on port " + tcpPort, e);
       System.exit(-1);
     }
     
@@ -115,7 +122,7 @@ public abstract class AbstractChecker extends Configured implements Tool {
         Thread thread = new Thread(worker);
         thread.start();
       } catch (Exception e) {
-        LOG.error("Accept failed: " + tcpPort);
+        LOG.error("Accept failed: " + tcpPort, e);
         System.exit(-1);
       }
     }
@@ -130,46 +137,63 @@ public abstract class AbstractChecker extends Configured implements Tool {
     }
 
     public void run() {
+      // Setup streams
+      BufferedReader in = null;
+      OutputStream out = null;
+      try {
+        in = new BufferedReader(new InputStreamReader(client.getInputStream()));
+        out = client.getOutputStream();
+      } catch (IOException e) {
+        LOG.error("Failed initializing streams: ", e);
+        return;
+      }
+
+      // Listen for work
       if (keepClientCnxOpen) {
         try {
-          while (readWrite()) {} // keep connection open until it closes
+          while (readWrite(in, out)) {} // keep connection open until it closes
         } catch(Exception e) {
           LOG.error("Read/Write failed: ", e);
         }
       } else {
         try {
-          readWrite();
+          readWrite(in, out);
         } catch(Exception e) {
           LOG.error("Read/Write failed: ", e);
         }
-        
-        try { // close ourselves
-          client.close();
-        } catch (Exception e){
-          LOG.error(e.toString());
-        }
+      }
+
+      try { // close ourselves
+        client.close();
+      } catch (Exception e){
+        LOG.error(e.toString());
       }
     }
     
-    protected boolean readWrite() throws Exception {
-      String line;
-      BufferedReader in = null;
-      PrintWriter out = null;
-      
-      in = new BufferedReader(new InputStreamReader(client.getInputStream()));
+    protected boolean readWrite(BufferedReader in, OutputStream out) throws Exception {
+      String line = in.readLine();
 
-      line = in.readLine();
       if (line == null) {
         // End of stream
         return false;
       }
 
       if (line.trim().length() > 1) {
+        // The actual work
         StringBuilder output = new StringBuilder();
         process(line, output);
-        client.getOutputStream().write(output.toString().getBytes(StandardCharsets.UTF_8));
+        output.append("\n");
+        out.write(output.toString().getBytes(StandardCharsets.UTF_8));
       }
       return true;
     }
   }
+
+  protected ProtocolOutput getProtocolOutput(String url, CrawlDatum datum) throws Exception {
+    ProtocolFactory factory = new ProtocolFactory(getConf());
+    Protocol protocol = factory.getProtocol(url);
+    Text turl = new Text(url);
+    return protocol.getProtocolOutput(turl, datum);
+  }
+
 }

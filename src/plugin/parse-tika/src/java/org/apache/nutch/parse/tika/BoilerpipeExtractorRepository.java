@@ -16,19 +16,15 @@
  */
 package org.apache.nutch.parse.tika;
 
-import java.lang.ClassLoader;
-import java.lang.InstantiationException;
 import java.util.HashMap;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.tika.parser.html.BoilerpipeContentHandler;
 import de.l3s.boilerpipe.BoilerpipeExtractor;
-import de.l3s.boilerpipe.extractors.*;
 
 class BoilerpipeExtractorRepository {
 
     public static final Log LOG = LogFactory.getLog(BoilerpipeExtractorRepository.class);
-    public static final HashMap<String, BoilerpipeExtractor> extractorRepository = new HashMap<String, BoilerpipeExtractor>();
+    public static final HashMap<String, BoilerpipeExtractor> extractorRepository = new HashMap<>();
  
     /**
      * Returns an instance of the specified extractor
@@ -45,7 +41,7 @@ class BoilerpipeExtractorRepository {
           Class extractorClass = loader.loadClass(boilerpipeExtractorName);
 
           // Add an instance to the repository
-          extractorRepository.put(boilerpipeExtractorName, (BoilerpipeExtractor)extractorClass.newInstance());
+          extractorRepository.put(boilerpipeExtractorName, (BoilerpipeExtractor)extractorClass.getConstructor().newInstance());
 
         } catch (ClassNotFoundException e) {
           LOG.error("BoilerpipeExtractor " + boilerpipeExtractorName + " not found!");

@@ -17,8 +17,6 @@
 
 package org.apache.nutch.tools;
 
-//JDK imports
-
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -51,13 +49,10 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorOutputStream;
-//Commons imports
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.FilenameUtils;
 
-//Hadoop
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.LocatedFileStatus;
 import org.apache.hadoop.fs.Path;
@@ -72,10 +67,12 @@ import org.apache.nutch.crawl.Inlink;
 import org.apache.nutch.crawl.Inlinks;
 import org.apache.nutch.crawl.LinkDbReader;
 import org.apache.nutch.metadata.Metadata;
+import org.apache.nutch.metadata.Nutch;
 import org.apache.nutch.protocol.Content;
 import org.apache.nutch.util.DumpFileUtil;
 import org.apache.nutch.util.NutchConfiguration;
-//Tika imports
+import org.apache.nutch.util.NutchTool;
+
 import org.apache.tika.Tika;
 
 import com.fasterxml.jackson.dataformat.cbor.CBORFactory;
@@ -178,7 +175,7 @@ import com.ibm.icu.text.SimpleDateFormat;
  * }
  * </pre>
  */
-public class CommonCrawlDataDumper extends Configured implements Tool {
+public class CommonCrawlDataDumper extends NutchTool implements Tool {
 
   private static final Logger LOG = LoggerFactory
       .getLogger(MethodHandles.lookup().lookupClass());
@@ -286,7 +283,7 @@ public class CommonCrawlDataDumper extends Configured implements Tool {
         SequenceFile.Reader reader = new SequenceFile.Reader(nutchConfig,
             SequenceFile.Reader.file(segmentPart));
 
-        Writable key = (Writable) reader.getKeyClass().newInstance();
+        Writable key = (Writable) reader.getKeyClass().getConstructor().newInstance();
 
         Content content = null;
         while (reader.next(key)) {
@@ -713,5 +710,73 @@ public class CommonCrawlDataDumper extends Configured implements Tool {
     }
 
     return 0;
+  }
+
+  /**
+   * Used by the REST service
+   */
+  @Override
+  public Map<String, Object> run(Map<String, Object> args, String crawlId)
+      throws Exception {
+
+    String keyPrefix = args.containsKey("keyPrefix")
+        ? (String) args.get("keyPrefix")
+        : "";
+
+    File outputDir = new File((String) args.get("outputDir"));
+    File segmentRootDir = new File((String) args.get(Nutch.ARG_SEGMENTDIR));
+    ArrayList<String> mimeTypesList = args.containsKey("mimetypes")
+        ? (ArrayList<String>) args.get("mimetypes")
+        : null;
+    String[] mimeTypes = null;
+    if (mimeTypesList != null) {
+      mimeTypes = new String[mimeTypesList.size()];
+      int i = 0;
+      for (String m : mimeTypesList)
+        mimeTypes[i++] = m;
+    }
+    boolean gzip = args.containsKey("gzip") ? (boolean) args.get("gzip")
+        : false;
+    boolean epochFilename = args.containsKey("epochFilename")
+        ? (boolean) args.get("epochFilename")
+        : false;
+
+    boolean simpleDateFormat = args.containsKey("simpleDateFormat")
+        ? (boolean) args.get("simpleDateFormat")
+        : false;
+    boolean jsonArray = args.containsKey("jsonArray")
+        ? (boolean) args.get("jsonArray")
+        : false;
+    boolean reverseKey = args.containsKey("reverseKey")
+        ? (boolean) args.get("reverseKey")
+        : false;
+    String extension = args.containsKey("extension")
+        ? (String) args.get("extension")
+        : "";
+    boolean warc = args.containsKey("warc") ? (boolean) args.get("warc")
+        : false;
+    long warcSize = args.containsKey("warcSize") ? (Long) args.get("warcSize")
+        : 0;
+
+    CommonCrawlConfig config = new CommonCrawlConfig();
+    config.setKeyPrefix(keyPrefix);
+    config.setSimpleDateFormat(simpleDateFormat);
+    config.setJsonArray(jsonArray);
+    config.setReverseKey(reverseKey);
+    config.setCompressed(gzip);
+    config.setWarcSize(warcSize);
+    config.setOutputDir((String) args.get("outputDir"));
+
+    if (!outputDir.exists()) {
+      if (!outputDir.mkdirs())
+        throw new Exception(
+            "Unable to create: [" + outputDir.getAbsolutePath() + "]");
+    }
+
+    CommonCrawlDataDumper dumper = new CommonCrawlDataDumper(config);
+
+    dumper.dump(outputDir, segmentRootDir, null, gzip, mimeTypes, epochFilename,
+        extension, warc);
+    return null;
   }
 }

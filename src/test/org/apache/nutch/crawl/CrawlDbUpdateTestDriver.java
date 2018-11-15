@@ -19,7 +19,6 @@ package org.apache.nutch.crawl;
 
 import java.lang.invoke.MethodHandles;
 import java.io.IOException;
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -27,25 +26,8 @@ import java.util.Iterator;
 import java.util.List;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.conf.Configuration.IntegerRanges;
-import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.RawComparator;
 import org.apache.hadoop.io.Text;
-import org.apache.hadoop.mapreduce.Counter;
-import org.apache.hadoop.mapreduce.Counters;
-import org.apache.hadoop.mapreduce.InputFormat;
-import org.apache.hadoop.mapreduce.InputSplit;
-import org.apache.hadoop.mapreduce.JobContext;
-import org.apache.hadoop.mapreduce.JobID;
-import org.apache.hadoop.mapreduce.Mapper;
-import org.apache.hadoop.mapreduce.OutputCommitter;
-import org.apache.hadoop.mapreduce.OutputFormat;
-import org.apache.hadoop.mapreduce.Partitioner;
 import org.apache.hadoop.mapreduce.Reducer;
-import org.apache.hadoop.mapreduce.Reducer.Context;
-import org.apache.hadoop.mapreduce.TaskAttemptID;
-import org.apache.hadoop.mapreduce.TaskInputOutputContext;
-import org.apache.hadoop.security.Credentials;
 import org.apache.hadoop.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -92,7 +74,7 @@ public class CrawlDbUpdateTestDriver<T extends Reducer<Text, CrawlDatum, Text, C
     }
     Collections.shuffle(values); // sorting of values should have no influence
     reduceDriver = ReduceDriver.newReduceDriver(reducer);
-    reduceDriver.setConfiguration(configuration);
+    reduceDriver.getConfiguration().addResource(configuration);
     reduceDriver.withInput(dummyURL, values);
     List<Pair<Text,CrawlDatum>> reduceResult;
     try {

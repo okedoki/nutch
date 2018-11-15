@@ -37,7 +37,6 @@ public class NodeReader implements NutchReader {
 
   @Override
   public List read(String path) throws FileNotFoundException {
-    // TODO Auto-generated method stub
     List<HashMap> rows= new ArrayList<>();
     Path file = new Path(path);
     SequenceFile.Reader reader;
@@ -61,7 +60,6 @@ public class NodeReader implements NutchReader {
       throw new FileNotFoundException();
 
     }catch (IOException e) {
-      // TODO Auto-generated catch block
       e.printStackTrace();
       LOG.error("Error occurred while reading file {} : ", file, StringUtils.stringifyException(e));
       throw new WebApplicationException();
@@ -94,7 +92,6 @@ public class NodeReader implements NutchReader {
       throw new FileNotFoundException();
 
     }catch (IOException e) {
-      // TODO Auto-generated catch block
       e.printStackTrace();
       LOG.error("Error occurred while reading file {} : ", file, 
           StringUtils.stringifyException(e));
@@ -130,7 +127,6 @@ public class NodeReader implements NutchReader {
       throw new FileNotFoundException();
 
     }catch (IOException e) {
-      // TODO Auto-generated catch block
       e.printStackTrace();
       LOG.error("Error occurred while reading file {} : ", file, 
           StringUtils.stringifyException(e));
@@ -160,7 +156,6 @@ public class NodeReader implements NutchReader {
       throw new FileNotFoundException();
 
     }catch (IOException e) {
-      // TODO Auto-generated catch block
       e.printStackTrace();
       LOG.error("Error occurred while reading file {} : ", file, 
           StringUtils.stringifyException(e));
@@ -171,14 +166,14 @@ public class NodeReader implements NutchReader {
   }
 
   private HashMap<String, String> getNodeRow(Writable key, Node value) {
-    HashMap<String, String> t_row = new HashMap<>();
-    t_row.put("key_url", key.toString());
-    t_row.put("num_inlinks", String.valueOf(value.getNumInlinks()) );
-    t_row.put("num_outlinks", String.valueOf(value.getNumOutlinks()) );
-    t_row.put("inlink_score", String.valueOf(value.getInlinkScore()));
-    t_row.put("outlink_score", String.valueOf(value.getOutlinkScore()));
-    t_row.put("metadata", value.getMetadata().toString());
+    HashMap<String, String> tRow = new HashMap<>();
+    tRow.put("key_url", key.toString());
+    tRow.put("num_inlinks", String.valueOf(value.getNumInlinks()) );
+    tRow.put("num_outlinks", String.valueOf(value.getNumOutlinks()) );
+    tRow.put("inlink_score", String.valueOf(value.getInlinkScore()));
+    tRow.put("outlink_score", String.valueOf(value.getOutlinkScore()));
+    tRow.put("metadata", value.getMetadata().toString());
 
-    return t_row;
+    return tRow;
   }
 }

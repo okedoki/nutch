@@ -17,7 +17,6 @@
 
 package org.apache.nutch.crawl;
 
-// Commons Logging imports
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,7 +51,7 @@ public class SignatureFactory {
           LOG.info("Using Signature impl: " + clazz);
         }
         Class<?> implClass = Class.forName(clazz);
-        impl = (Signature) implClass.newInstance();
+        impl = (Signature) implClass.getConstructor().newInstance();
         impl.setConf(conf);
         objectCache.setObject(clazz, impl);
       } catch (Exception e) {

@@ -177,6 +177,7 @@
       <packageset dir="${plugins.dir}/creativecommons/src/java"/>
       <packageset dir="${plugins.dir}/feed/src/java"/>
       <packageset dir="${plugins.dir}/headings/src/java"/>
+      <packageset dir="${plugins.dir}/exchange-jexl/src/java"/>
       <packageset dir="${plugins.dir}/index-anchor/src/java"/>
       <packageset dir="${plugins.dir}/index-basic/src/java"/>
       <packageset dir="${plugins.dir}/index-geoip/src/java"/>
@@ -187,6 +188,7 @@
       <packageset dir="${plugins.dir}/index-replace/src/java"/>
       <packageset dir="${plugins.dir}/index-static/src/java"/>
       <packageset dir="${plugins.dir}/indexer-cloudsearch/src/java/" />
+      <packageset dir="${plugins.dir}/indexer-csv/src/java"/>
       <packageset dir="${plugins.dir}/indexer-dummy/src/java"/>
       <packageset dir="${plugins.dir}/indexer-elastic-rest/src/java/"/>
       <packageset dir="${plugins.dir}/indexer-elastic/src/java/" />
@@ -195,6 +197,7 @@
       <packageset dir="${plugins.dir}/language-identifier/src/java"/>
       <packageset dir="${plugins.dir}/lib-htmlunit/src/java"/>
       <packageset dir="${plugins.dir}/lib-http/src/java"/>
+      <packageset dir="${plugins.dir}/lib-rabbitmq/src/java"/>
       <packageset dir="${plugins.dir}/lib-regex-filter/src/java"/>
       <packageset dir="${plugins.dir}/lib-selenium/src/java"/>
       <packageset dir="${plugins.dir}/microformats-reltag/src/java"/>
@@ -214,6 +217,7 @@
       <packageset dir="${plugins.dir}/protocol-http/src/java"/>
       <packageset dir="${plugins.dir}/protocol-httpclient/src/java"/>
       <packageset dir="${plugins.dir}/protocol-interactiveselenium/src/java"/>
+      <packageset dir="${plugins.dir}/protocol-okhttp/src/java"/>
       <packageset dir="${plugins.dir}/protocol-selenium/src/java"/>
       <packageset dir="${plugins.dir}/publish-rabbitmq/src/java"/>
       <packageset dir="${plugins.dir}/scoring-depth/src/java"/>
@@ -263,6 +267,7 @@
       <group title="Parse Plugins" packages="${plugins.parse}"/>
       <group title="Parse Filter Plugins" packages="${plugins.parsefilter}"/>
       <group title="Publisher Plugins" packages="${plugins.publisher}"/>
+      <group title="Exchange Plugins" packages="${plugins.exchange}"/>
       <group title="Indexing Filter Plugins" packages="${plugins.index}"/>
       <group title="Indexer Plugins" packages="${plugins.indexer}"/>
       <group title="Misc. Plugins" packages="${plugins.misc}"/>
@@ -410,7 +415,7 @@
   <!-- ================================================================== -->
   <!-- Compile test code                                                  -->
   <!-- ================================================================== -->
-  <target name="compile-core-test" depends="init, resolve-test, compile-core" description="--> compile test code">
+  <target name="compile-core-test" depends="init, compile-core, resolve-test" description="--> compile test code">
     <javac
      encoding="${build.encoding}"
      srcdir="${test.src.dir}"
@@ -523,7 +528,7 @@
   <!-- ================================================================== -->
 
   <!-- target: resolve  ================================================= -->
-  <target name="resolve-default" depends="clean-default-lib" description="--> resolve and retrieve dependencies with ivy">
+  <target name="resolve-default" depends="clean-default-lib, init" description="--> resolve and retrieve dependencies with ivy">
     <ivy:resolve file="${ivy.file}" conf="default" log="download-only"/>
     <ivy:retrieve pattern="${build.lib.dir}/[artifact]-[revision].[ext]" symlink="false" log="quiet"/>
     <antcall target="copy-libs"/>
@@ -557,7 +562,13 @@
 
   <!-- target: report  ================================================== -->
   <target name="report" depends="resolve-test" description="--> generates a report of dependencies">
-    <ivy:report todir="${build.dir}"/>
+    <ivy:report todir="${build.dir}" xml="true"/>
+  </target>
+
+  <!-- target: 3rd-party licenses report  =============================== -->
+  <target name="report-licenses" depends="resolve-default" description="--> generates a report of licenses of dependencies">
+    <ivy:report todir="${build.dir}" xml="false" graph="false" xslfile="ivy/ivy-report-license.xsl"
+                outputpattern="[organisation]-[module]-[conf]-3rd-party-licenses.tsv"/>
   </target>
 
   <!-- target: ivy-init  ================================================ -->
@@ -634,6 +645,7 @@
       <packageset dir="${plugins.dir}/creativecommons/src/java"/>
       <packageset dir="${plugins.dir}/feed/src/java"/>
       <packageset dir="${plugins.dir}/headings/src/java"/>
+      <packageset dir="${plugins.dir}/exchange-jexl/src/java"/>
       <packageset dir="${plugins.dir}/index-anchor/src/java"/>
       <packageset dir="${plugins.dir}/index-basic/src/java"/>
       <packageset dir="${plugins.dir}/index-geoip/src/java"/>
@@ -644,6 +656,7 @@
       <packageset dir="${plugins.dir}/index-replace/src/java"/>
       <packageset dir="${plugins.dir}/index-static/src/java"/>
       <packageset dir="${plugins.dir}/indexer-cloudsearch/src/java/" />
+      <packageset dir="${plugins.dir}/indexer-csv/src/java"/>
       <packageset dir="${plugins.dir}/indexer-dummy/src/java"/>
       <packageset dir="${plugins.dir}/indexer-elastic-rest/src/java/"/>
       <packageset dir="${plugins.dir}/indexer-elastic/src/java/" />
@@ -652,6 +665,7 @@
       <packageset dir="${plugins.dir}/language-identifier/src/java"/>
       <packageset dir="${plugins.dir}/lib-htmlunit/src/java"/>
       <packageset dir="${plugins.dir}/lib-http/src/java"/>
+      <packageset dir="${plugins.dir}/lib-rabbitmq/src/java"/>
       <packageset dir="${plugins.dir}/lib-regex-filter/src/java"/>
       <packageset dir="${plugins.dir}/lib-selenium/src/java"/>
       <packageset dir="${plugins.dir}/microformats-reltag/src/java"/>
@@ -671,6 +685,7 @@
       <packageset dir="${plugins.dir}/protocol-http/src/java"/>
       <packageset dir="${plugins.dir}/protocol-httpclient/src/java"/>
       <packageset dir="${plugins.dir}/protocol-interactiveselenium/src/java"/>
+      <packageset dir="${plugins.dir}/protocol-okhttp/src/java"/>
       <packageset dir="${plugins.dir}/protocol-selenium/src/java"/>
       <packageset dir="${plugins.dir}/publish-rabbitmq/src/java"/>
       <packageset dir="${plugins.dir}/scoring-depth/src/java"/>
@@ -720,6 +735,7 @@
       <group title="Parse Plugins" packages="${plugins.parse}"/>
       <group title="Parse Filter Plugins" packages="${plugins.parsefilter}"/>
       <group title="Publisher Plugins" packages="${plugins.publisher}"/>
+      <group title="Exchange Plugins" packages="${plugins.exchange}"/>
       <group title="Indexing Filter Plugins" packages="${plugins.index}"/>
       <group title="Indexer Plugins" packages="${plugins.indexer}"/>
       <group title="Misc. Plugins" packages="${plugins.misc}"/>
@@ -1002,7 +1018,7 @@
 
   <!-- target: ant-eclipse-download   =================================== -->
   <target name="ant-eclipse-download" description="--> downloads the ant-eclipse binary.">
-    <get src="http://downloads.sourceforge.net/project/ant-eclipse/ant-eclipse/1.0/ant-eclipse-1.0.bin.tar.bz2"
+    <get src="https://downloads.sourceforge.net/project/ant-eclipse/ant-eclipse/1.0/ant-eclipse-1.0.bin.tar.bz2"
          dest="${build.dir}/ant-eclipse-1.0.bin.tar.bz2" usetimestamp="false" />
 
     <untar src="${build.dir}/ant-eclipse-1.0.bin.tar.bz2"
@@ -1045,6 +1061,8 @@
         <source path="${plugins.dir}/feed/src/java/" />
         <source path="${plugins.dir}/feed/src/test/" />
         <source path="${plugins.dir}/headings/src/java/" />
+        <source path="${plugins.dir}/headings/src/test/" />
+        <source path="${plugins.dir}/exchange-jexl/src/java/" />
         <source path="${plugins.dir}/index-anchor/src/java/" />
         <source path="${plugins.dir}/index-anchor/src/test/" />
         <source path="${plugins.dir}/index-basic/src/java/" />
@@ -1062,6 +1080,8 @@
         <source path="${plugins.dir}/index-static/src/java/" />
         <source path="${plugins.dir}/index-static/src/test/" />
         <source path="${plugins.dir}/indexer-cloudsearch/src/java/" />
+        <source path="${plugins.dir}/indexer-csv/src/java"/>
+        <source path="${plugins.dir}/indexer-csv/src/test"/>
         <source path="${plugins.dir}/indexer-dummy/src/java/" />
         <source path="${plugins.dir}/indexer-elastic-rest/src/java/"/>
         <source path="${plugins.dir}/indexer-elastic/src/java/" />
@@ -1073,6 +1093,7 @@
         <source path="${plugins.dir}/lib-htmlunit/src/java/" />
         <source path="${plugins.dir}/lib-http/src/java/" />
         <source path="${plugins.dir}/lib-http/src/test/" />
+        <source path="${plugins.dir}/lib-rabbitmq/src/java/" />
         <source path="${plugins.dir}/lib-regex-filter/src/java/" />
         <source path="${plugins.dir}/lib-regex-filter/src/test/" />
         <source path="${plugins.dir}/lib-selenium/src/java/" />
@@ -1084,6 +1105,7 @@
         <source path="${plugins.dir}/parse-html/src/java/" />
         <source path="${plugins.dir}/parse-html/src/test/" />
         <source path="${plugins.dir}/parse-js/src/java/" />
+        <source path="${plugins.dir}/parse-js/src/test/" />
         <source path="${plugins.dir}/parse-metatags/src/java/" />
         <source path="${plugins.dir}/parse-metatags/src/test/" />
         <source path="${plugins.dir}/parse-swf/src/java/" />
@@ -1104,6 +1126,8 @@
         <source path="${plugins.dir}/protocol-httpclient/src/java/" />
         <source path="${plugins.dir}/protocol-httpclient/src/test/" />
         <source path="${plugins.dir}/protocol-interactiveselenium/src/java/" />
+        <source path="${plugins.dir}/protocol-okhttp/src/java/" />
+        <source path="${plugins.dir}/protocol-okhttp/src/test/" />
         <source path="${plugins.dir}/protocol-selenium/src/java"/>
         <source path="${plugins.dir}/publish-rabbitmq/src/java"/>
         <source path="${plugins.dir}/scoring-depth/src/java/" />

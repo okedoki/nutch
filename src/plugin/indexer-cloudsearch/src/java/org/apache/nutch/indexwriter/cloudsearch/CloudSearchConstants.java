@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.
@@ -14,14 +14,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.nutch.indexwriter.cloudsearch;
 
 public interface CloudSearchConstants {
-  public static final String CLOUDSEARCH_PREFIX = "cloudsearch.";
-  public static final String ENDPOINT = CLOUDSEARCH_PREFIX + "endpoint";
-  public static final String REGION = CLOUDSEARCH_PREFIX + "region";
-  public static final String BATCH_DUMP = CLOUDSEARCH_PREFIX + "batch.dump";
-  public static final String MAX_DOCS_BATCH = CLOUDSEARCH_PREFIX
-      + "batch.maxSize";
+  public static final String ENDPOINT = "endpoint";
+  public static final String REGION = "region";
+  public static final String BATCH_DUMP = "batch.dump";
+  public static final String MAX_DOCS_BATCH = "batch.maxSize";
 }

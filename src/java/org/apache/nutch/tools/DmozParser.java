@@ -17,26 +17,43 @@
 
 package org.apache.nutch.tools;
 
-import java.io.*;
+import java.io.BufferedInputStream;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FilterReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.Reader;
 import java.lang.invoke.MethodHandles;
-import java.util.*;
-import java.util.regex.*;
+import java.util.Random;
+import java.util.Vector;
+import java.util.regex.Pattern;
 
-import javax.xml.parsers.*;
-import org.xml.sax.*;
-import org.xml.sax.helpers.*;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.parsers.SAXParser;
+import javax.xml.parsers.SAXParserFactory;
+
 import org.apache.xerces.util.XMLChar;
 
-// Slf4j Logging imports
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import org.apache.hadoop.io.*;
-import org.apache.hadoop.fs.*;
+import org.xml.sax.Attributes;
+import org.xml.sax.InputSource;
+import org.xml.sax.Locator;
+import org.xml.sax.SAXException;
+import org.xml.sax.SAXParseException;
+import org.xml.sax.XMLReader;
+import org.xml.sax.helpers.DefaultHandler;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.io.MD5Hash;
 import org.apache.nutch.util.NutchConfiguration;
 
-/** Utility that converts DMOZ RDF into a flat file of URLs to be injected. */
+/** 
+ * Utility that converts <a href="http://www.dmoztools.net/">DMOZ</a> 
+ * RDF into a flat file of URLs to be injected. 
+ */
 public class DmozParser {
   private static final Logger LOG = LoggerFactory
       .getLogger(MethodHandles.lookup().lookupClass());
@@ -96,10 +113,10 @@ public class DmozParser {
    */
   private class RDFProcessor extends DefaultHandler {
     String curURL = null, curSection = null;
-    boolean titlePending = false, descPending = false,
-        insideAdultSection = false;
+    boolean titlePending = false, descPending = false;
     Pattern topicPattern = null;
     StringBuffer title = new StringBuffer(), desc = new StringBuffer();
+    @SuppressWarnings("unused")
     XMLReader reader;
     int subsetDenom;
     int hashSkew;
@@ -242,17 +259,6 @@ public class DmozParser {
     }
 
     /**
-     * Emit the exception message, with line numbers
-     */
-    public void errorError(SAXParseException spe) {
-      if (LOG.isErrorEnabled()) {
-        LOG.error("Fatal err: " + spe.toString() + ": " + spe.getMessage());
-        LOG.error("Last known line is " + location.getLineNumber()
-            + ", column " + location.getColumnNumber());
-      }
-    }
-
-    /**
      * Emit exception warning message
      */
     public void warning(SAXParseException spe) {
@@ -267,9 +273,8 @@ public class DmozParser {
    * the web db.
    */
   public void parseDmozFile(File dmozFile, int subsetDenom,
-      boolean includeAdult, int skew, Pattern topicPattern)
-
-  throws IOException, SAXException, ParserConfigurationException {
+      boolean includeAdult, int skew, Pattern topicPattern) 
+              throws IOException, SAXException, ParserConfigurationException {
 
     SAXParserFactory parserFactory = SAXParserFactory.newInstance();
     SAXParser parser = parserFactory.newSAXParser();
@@ -306,7 +311,7 @@ public class DmozParser {
         topicFile), "UTF-8"))) {
       String line = null;
       while ((line = in.readLine()) != null) {
-        topics.addElement(new String(line));
+        topics.addElement(line);
       }
     } catch (Exception e) {
       if (LOG.isErrorEnabled()) {
@@ -321,7 +326,7 @@ public class DmozParser {
    * structured DMOZ file. By default, we ignore Adult material (as categorized
    * by DMOZ).
    */
-  public static void main(String argv[]) throws Exception {
+  public static void main(String[] argv) throws Exception {
     if (argv.length < 1) {
       System.err
           .println("Usage: DmozParser <dmoz_file> [-subset <subsetDenominator>] [-includeAdultMaterial] [-skew skew] [-topicFile <topic list file>] [-topic <topic> [-topic <topic> [...]]]");
@@ -362,7 +367,7 @@ public class DmozParser {
       DmozParser parser = new DmozParser();
 
       if (!topics.isEmpty()) {
-        String regExp = new String("^(");
+        String regExp = "^(";
         int j = 0;
         for (; j < topics.size() - 1; ++j) {
           regExp = regExp.concat(topics.get(j));

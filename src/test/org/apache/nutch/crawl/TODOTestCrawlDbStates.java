@@ -1,11 +1,31 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.apache.nutch.crawl;
 
+import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 
 import static org.apache.nutch.crawl.CrawlDatum.*;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.nutch.util.TimingUtil;
+
+import org.apache.hadoop.mapreduce.Reducer.Context;
 
 import static org.junit.Assert.*;
 
@@ -27,8 +47,12 @@ public class TODOTestCrawlDbStates extends TestCrawlDbStates {
     LOG.info("NUTCH-578: test long running continuous crawl with fetch_retry");
     ContinuousCrawlTestUtil crawlUtil = new ContinuousCrawlTestFetchRetry();
     // keep going for long, to "provoke" a retry counter overflow
-    if (!crawlUtil.run(150)) {
-      fail("fetch_retry did not result in a db_gone if retry counter > maxRetries (NUTCH-578)");
+    try {
+      if (!crawlUtil.run(150)) {
+        fail("fetch_retry did not result in a db_gone if retry counter > maxRetries (NUTCH-578)");
+      }
+    } catch (IOException e) {
+      e.printStackTrace();
     }
   }
 
@@ -40,7 +64,7 @@ public class TODOTestCrawlDbStates extends TestCrawlDbStates {
     ContinuousCrawlTestFetchRetry() {
       super();
       fetchStatus = STATUS_FETCH_RETRY;
-      retryMax = configuration.getInt("db.fetch.retry.max", retryMax);
+      retryMax = context.getConfiguration().getInt("db.fetch.retry.max", retryMax);
     }
 
     @Override
@@ -96,7 +120,8 @@ public class TODOTestCrawlDbStates extends TestCrawlDbStates {
   @Test
   public void testAdaptiveFetchScheduleSyncDelta() {
     LOG.info("NUTCH-1564 test SYNC_DELTA calculation of AdaptiveFetchSchedule");
-    Configuration conf = CrawlDBTestUtil.createConfiguration();
+    Context context = CrawlDBTestUtil.createContext();
+    Configuration conf = context.getConfiguration();
     conf.setLong("db.fetch.interval.default", 172800); // 2 days
     conf.setLong("db.fetch.schedule.adaptive.min_interval", 86400); // 1 day
     conf.setLong("db.fetch.schedule.adaptive.max_interval", 604800); // 7 days
@@ -104,10 +129,14 @@ public class TODOTestCrawlDbStates extends TestCrawlDbStates {
     conf.set("db.fetch.schedule.class",
         "org.apache.nutch.crawl.AdaptiveFetchSchedule");
     ContinuousCrawlTestUtil crawlUtil = new CrawlTestFetchScheduleNotModifiedFetchTime(
-        conf);
+        context);
     crawlUtil.setInterval(FetchSchedule.SECONDS_PER_DAY / 3);
-    if (!crawlUtil.run(100)) {
-      fail("failed: sync_delta calculation with AdaptiveFetchSchedule");
+    try {
+      if (!crawlUtil.run(100)) {
+        fail("failed: sync_delta calculation with AdaptiveFetchSchedule");
+      }
+    } catch (IOException e) {
+      e.printStackTrace();
     }
   }
 
@@ -120,8 +149,9 @@ public class TODOTestCrawlDbStates extends TestCrawlDbStates {
     private long minInterval;
     private long maxInterval;
 
-    CrawlTestFetchScheduleNotModifiedFetchTime(Configuration conf) {
-      super(conf);
+    CrawlTestFetchScheduleNotModifiedFetchTime(Context context) {
+      super(context);
+      Configuration conf = context.getConfiguration();
       minInterval = conf.getLong("db.fetch.schedule.adaptive.min_interval",
           86400); // 1 day
       maxInterval = conf.getLong("db.fetch.schedule.adaptive.max_interval",

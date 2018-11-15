@@ -19,8 +19,6 @@ package org.apache.nutch.net.urlnormalizer.ajax;
 
 import java.lang.invoke.MethodHandles;
 import java.net.URL;
-import java.net.URI;
-import java.net.URLEncoder;
 import java.net.URLDecoder;
 import java.net.MalformedURLException;
 import java.nio.charset.Charset;
@@ -116,7 +114,6 @@ public class AjaxURLNormalizer implements URLNormalizer {
    * @return String
    */
   protected String normalizeEscapedFragment(String urlString) throws MalformedURLException {
-    int pos = urlString.indexOf(ESCAPED_URL_PART);
     URL u = new URL(urlString);
     StringBuilder sb = new StringBuilder();
 

@@ -30,8 +30,6 @@ import org.apache.nutch.service.model.response.JobInfo;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Queues;
 
-
-
 public class NutchServerPoolExecutor extends ThreadPoolExecutor{
 
   private Queue<JobWorker> workersHistory;
@@ -50,6 +48,7 @@ public class NutchServerPoolExecutor extends ThreadPoolExecutor{
       runningWorkers.offer(((JobWorker) runnable));
     }
   }
+  @SuppressWarnings("unlikely-arg-type")
   @Override
   protected void afterExecute(Runnable runnable, Throwable throwable) {
     super.afterExecute(runnable, throwable);
